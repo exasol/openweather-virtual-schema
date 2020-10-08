@@ -1,10 +1,9 @@
 E-VS-OWFS-1		Column {filter_name} in PREDICATE_EQUAL expression is not supported for filtering.
-E-VS-OWFS-2 	CITY_NAME column filter does not accept numbers. Found <{(filter_value)}>.
-E-VS-OWFS-3		LONGITUDE column filter only accepts DECIMAL type. Found {type(filter_value)} instead.
-E-VS-OWFS-4		LATITUDE column filter only accepts DECIMAL type. Found {type(filter_value)} instead.
-E-VS-OWFS-5		CITY_ID column filter only accepts INT type. Found {type(filter_value)} instead.
-E-VS-OWFS-6		ZIP column filter only accepts INT type. Found {type(filter_value)} instead.
+E-VS-OWFS-2		CITY_NAME column filter does not accept numbers. Found <{(filter_value)}>.
+E-VS-OWFS-3		<filter_name> column filter only accepts DECIMAL type. Found {type(filter_value)} instead.
+E-VS-OWFS-4		Chosen LOG_LEVEL not supported. Please choose 'INFO' or 'WARNING'
+E-VS-OWFS-5		<filter_name> column filter only accepts whole numbers. Found {type(filter_value)} instead.
 E-VS-OWFS-7		COUNTRY_CODE column filter only accepts STRING type. Found {type(filter_value)} instead.
-E-VW-OWFS-8		API request with parameter <{param}> timed out.	
+E-VS-OWFS-8		API request with parameter <{param}> timed out.
 
 F-VS-OWFS-1		Unsupported adapter calback
