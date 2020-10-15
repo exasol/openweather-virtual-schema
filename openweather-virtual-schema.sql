@@ -484,18 +484,19 @@ import datetime
 import re
 import requests
 
+
 class PlainTextTcpHandler(logging.handlers.SocketHandler):
     """ Sends plain text log message over TCP channel """
 
     def makePickle(self, record):
         message = self.formatter.format(record) + "\r\n"
         return message.encode()
-    
+
     @staticmethod
     def initialize_logger(ip, port, level):
-        
+
         root_logger = logging.getLogger('')
-    
+
         try:
             root_logger.setLevel(level)
             if level in ('INFO', 'WARNING', 20, 30):
@@ -505,170 +506,182 @@ class PlainTextTcpHandler(logging.handlers.SocketHandler):
         except TypeError as e:
             e.message = "E-VS-OWFS-4 Chosen LOG_LEVEL not supported. Please choose 'INFO' or 'WARNING'"
             raise
-    
+
         socket_handler = PlainTextTcpHandler(ip, port)
         socket_handler.setFormatter(logging.Formatter('%(asctime)s: %(message)s'))
         root_logger.addHandler(socket_handler)
         return root_logger
 
-def api_calls(parameter_expressions, ctx, logger):
-    if type(parameter_expressions) == list:
-        unpack_parameter_expression_list(parameter_expressions, ctx, logger)
-    else:
-        request_api_and_emit(ctx, parameter_expressions, logger)     
 
-def api_request(host, method, param, api_key, logger):
-    request_string = f"{host}{method}?{param}&units=metric&appid={api_key}"
-    logger.info(f'REQUEST STRING: {request_string}\n\n\n')
-    return requests.get(request_string)
+class ApiHandler:
+    def __init__(self, ctx):
+        self.ctx = ctx
+        self.api_host = ctx.api_host
+        self.api_method = ctx.api_method
+        self.api_key = ctx.api_key
 
-def emit_current_weather(ctx, json_dict):
-    coord_group = json_dict.get('coord') if json_dict.get('coord') else {}
-    main_group = json_dict.get('main') if json_dict.get('main') else {}
-    weather_group = json_dict.get('weather') if json_dict.get('weather') else {}
-    wind_group = json_dict.get('wind') if json_dict.get('wind') else {}
-    clouds_group = json_dict.get('clouds') if json_dict.get('clouds') else {}
-    rain_group = json_dict.get('rain') if json_dict.get('rain') else {}
-    snow_group = json_dict.get('snow') if json_dict.get('snow') else {}
-    sys_group = json_dict.get('sys') if json_dict.get('sys') else {}
+        try:
+            self.parameter_expressions = json.loads(ctx.api_parameters)
+        except json.decoder.JSONDecodeError:
+            self.parameter_expressions = ctx.api_parameters
 
-    ctx.emit(sys_group.get('country'),  # --country code
-             json_dict.get('name'),  # --city name
-             json_dict.get('id'),  # --location id
-             datetime.datetime.fromtimestamp(int(json_dict.get('dt').__str__())), # --time of data collection in UNIX format -> converted to DB compatible datetime-string
-             coord_group.get('lon'),  # --longitude
-             coord_group.get('lat'),  # --latitude
-             weather_group[0].get('id'),  # --weather id
-             weather_group[0].get('main'),  # --weather group
-             weather_group[0].get('description'),  # --weather condition in the group
-             weather_group[0].get('icon'),  # --weather icon id
-             main_group.get('temp'),  # --temperature in degrees centigrade
-             main_group.get('feels_like'),  # --felt temperature in degrees centigrade
-             main_group.get('temp_min'),  # --min temperature in degrees centigrade
-             main_group.get('temp_max'),  # --max temperature in degrees centigradelsius
-             main_group.get('pressure'),  # --atmospheric pressure in hPa
-             main_group.get('humidity'),  # --relative humidity in %
-             main_group.get('sea_level'),  # --atmospheric pressure on the sea level
-             main_group.get('grnd_level'),  # --atmospheric pressure on the ground level
-             wind_group.get('speed'),  # --wind speed m/s
-             wind_group.get('deg'),  # --wind direction
-             wind_group.get('gust'),  # --wind gust
-             clouds_group.get('all'),  # --cloudiness in %
-             rain_group.get('1h'),  # --rain volume in the last hour in mm
-             rain_group.get('3h'),  # --rain volume in the last 3 hours in mm
-             snow_group.get('1h'),  # --snow volume in the last hour in mm
-             snow_group.get('3h'),  # --snow volume in the last 3 hours in mm
-             json_dict.get('visibility'),  # --visibility in meters
-             datetime.datetime.fromtimestamp(int(sys_group.get('sunrise').__str__())),             # --sunrise time in UNIX format conversion like data collection time
-             datetime.datetime.fromtimestamp(int(sys_group.get('sunset').__str__())),             # --sunrise time in UNIX format conversion like data collection time
-             json_dict.get('timezone') / 3600,  # --shift in seconds from UTC -> converted to hours shift
-             None)
+        self.logger = PlainTextTcpHandler.initialize_logger(ctx.logger_ip, int(ctx.logger_port), int(ctx.logger_level))
 
-def emit_forecast(ctx, json_dict):
-    list_group = json_dict.get('list') if json_dict.get('list') else {}
-    city_group = json_dict.get('city') if json_dict.get('city') else {}
-    coord_group = city_group.get('coord') if city_group else {}
+    def api_calls(self):
+        if type(self.parameter_expressions) == list:
+            self.unpack_parameter_expression_list()
+        else:
+            self.request_api_and_emit(self.parameter_expressions)
 
-    for record in list_group:
-        main_group = record.get('main') if record.get('main') else {}
-        weather_group = record.get('weather') if record.get('weather') else {}
-        wind_group = record.get('wind') if record.get('wind') else {}
-        clouds_group = record.get('clouds') if record.get('clouds') else {}
-        rain_group = record.get('rain') if record.get('rain') else {}
-        snow_group = record.get('snow') if record.get('snow') else {}
-        sys_group = record.get('sys') if record.get('sys') else {}
+    def unpack_parameter_expression_list(self):
+        for expression in self.parameter_expressions:
+            # -- Handle Null values sent from the adapter
+            if (type(expression) == list and any(not element for element in expression)) or not expression:
+                continue
+            elif type(expression) == list and (all(element.startswith('id') for element in expression) or all(
+                    element.startswith('q') for element in expression)):
+                self.unpack_const_list_expression(expression)
+            elif type(expression) == list and any(element.startswith('zip') for element in expression):
+                self.handle_zip_code_expression(expression)
+            elif type(expression) == list:
+                self.handle_geo_lookup_expression(expression)
+            else:
+                self.request_api_and_emit(expression)
 
-        ctx.emit(city_group.get('country'),  # --country code
-                 city_group.get('name'),  # --city name
-                 city_group.get('id'),  # --location id
-                 datetime.datetime.strptime(record.get('dt_txt'), '%Y-%m-%d %H:%M:%S'),  # --forecast timestamp
-                 coord_group.get('lon'),  # --longitude
-                 coord_group.get('lat'),  # --latitude
-                 weather_group[0].get('id'),  # --weather id
-                 weather_group[0].get('main'),  # --weather group
-                 weather_group[0].get('description'),  # --weather condition in the group
-                 weather_group[0].get('icon'),  # --weather icon id
-                 main_group.get('temp'),  # --temperature in degrees centigrade
-                 main_group.get('feels_like'),  # --felt temperature in degrees centigrade
-                 main_group.get('temp_min'),  # --min temperature in degrees centigrade
-                 main_group.get('temp_max'),  # --max temperature in degrees centigradelsius
-                 main_group.get('pressure'),  # --atmospheric pressure in hPa
-                 main_group.get('humidity'),  # --relative humidity in %
-                 main_group.get('sea_level'),  # --atmospheric pressure on the sea level
-                 main_group.get('grnd_level'),  # --atmospheric pressure on the ground level
-                 wind_group.get('speed'),  # --wind speed m/s
-                 wind_group.get('deg'),  # --wind direction
-                 record.get('pop'),  # --Probability of precipitation
-                 clouds_group.get('all'),  # --cloudiness in %
-                 rain_group.get('3h'),  # --rain volume in the last 3 hours in mm
-                 snow_group.get('3h'),  # --snow volume in the last 3 hours in mm
-                 record.get('visibility'),  # --visibility in meters
-                 datetime.datetime.fromtimestamp(int(city_group.get('sunrise').__str__())),  # --sunrise time in UNIX format conversion like data collection time
-                 datetime.datetime.fromtimestamp(int(city_group.get('sunset').__str__())),  # --sunrise time in UNIX format conversion like data collection time
-                 city_group.get('timezone') / 3600,  # --shift in seconds from UTC -> converted to hours shift
-                 None)
+    def unpack_const_list_expression(self, expression):
+        for literal in expression:
+            self.request_api_and_emit(literal)
 
-def handle_geo_lookup_expression(ctx, expression, logger):
-    parameter = '&'.join(expression)
-    request_api_and_emit(ctx, parameter, logger)    
+    def handle_zip_code_expression(self, expression):
+        reg = re.compile('zip')
+        zip_index = expression.index(list(filter(reg.match, expression))[0])  # --Reverse ZIP, Country Code if reversed
+        self.request_api_and_emit(f'{expression[zip_index]}{expression[abs(zip_index - 1)]}')
 
-def handle_zip_code_expression(ctx, expression, logger):
-    reg = re.compile('zip')
-    zip_index = expression.index(list(filter(reg.match, expression))[0])  # --Reverse ZIP, Country Code if reversed
-    request_api_and_emit(ctx,
-                         f'{expression[zip_index]}{expression[abs(zip_index - 1)]}',
-                         logger)
+    def handle_geo_lookup_expression(self, expression):
+        parameter = '&'.join(expression)
+        self.request_api_and_emit(parameter)
 
-def request_api_and_emit(ctx, param, logger):
-    host = ctx['api_host']
-    method = ctx['api_method']
-    key = ctx['api_key']
+    def request_api_and_emit(self, param):
+        self.logger.info(f'REQUESTNG API WITH: {param}')
 
-    logger.info(f'REQUESTNG API WITH: {param}')
-    try:
-        response = api_request(host, method, param, key, logger)
-        json_response_object = json.loads(response.text)
-    except requests.Timeout as e:
-        e.message = f'E-VW-OWFS-8 API request with parameter <{param}> timed out.'
+        try:
+            response = self.api_request(param)
+            json_response_object = json.loads(response.text)
+        except requests.Timeout as e:
+            e.message = f'E-VW-OWFS-8 API request with parameter <{param}> timed out.'
 
-    if response.status_code == 200:
-        if method == 'weather':
-            emit_current_weather(ctx, json_response_object)
-        elif method == 'forecast':
-            emit_forecast(ctx, json_response_object)
-    else:
-        logger.error('')
+        if response and response.status_code == 200:
+            if self.api_method == 'weather':
+                self.emit_current_weather(json_response_object)
+            elif self.api_method == 'forecast':
+                self.emit_forecast(json_response_object)
+        else:
+            self.logger.error('')
+
+    def api_request(self, param):
+        request_string = f"{self.api_host}{self.api_method}?{param}&units=metric&appid={self.api_key}"
+        self.logger.info(f'REQUEST STRING: {request_string}\n\n\n')
+        return requests.get(request_string)
+
+    def emit_current_weather(self, json_dict):
+        coord_group = json_dict.get('coord') if json_dict.get('coord') else {}
+        main_group = json_dict.get('main') if json_dict.get('main') else {}
+        weather_group = json_dict.get('weather') if json_dict.get('weather') else {}
+        wind_group = json_dict.get('wind') if json_dict.get('wind') else {}
+        clouds_group = json_dict.get('clouds') if json_dict.get('clouds') else {}
+        rain_group = json_dict.get('rain') if json_dict.get('rain') else {}
+        snow_group = json_dict.get('snow') if json_dict.get('snow') else {}
+        sys_group = json_dict.get('sys') if json_dict.get('sys') else {}
+
+        self.ctx.emit(sys_group.get('country'),  # --country code
+                      json_dict.get('name'),  # --city name
+                      json_dict.get('id'),  # --location id
+                      datetime.datetime.fromtimestamp(int(json_dict.get('dt').__str__())),
+                      # --time of data collection in UNIX format -> converted to DB compatible datetime-string
+                      coord_group.get('lon'),  # --longitude
+                      coord_group.get('lat'),  # --latitude
+                      weather_group[0].get('id'),  # --weather id
+                      weather_group[0].get('main'),  # --weather group
+                      weather_group[0].get('description'),  # --weather condition in the group
+                      weather_group[0].get('icon'),  # --weather icon id
+                      main_group.get('temp'),  # --temperature in degrees centigrade
+                      main_group.get('feels_like'),  # --felt temperature in degrees centigrade
+                      main_group.get('temp_min'),  # --min temperature in degrees centigrade
+                      main_group.get('temp_max'),  # --max temperature in degrees centigradelsius
+                      main_group.get('pressure'),  # --atmospheric pressure in hPa
+                      main_group.get('humidity'),  # --relative humidity in %
+                      main_group.get('sea_level'),  # --atmospheric pressure on the sea level
+                      main_group.get('grnd_level'),  # --atmospheric pressure on the ground level
+                      wind_group.get('speed'),  # --wind speed m/s
+                      wind_group.get('deg'),  # --wind direction
+                      wind_group.get('gust'),  # --wind gust
+                      clouds_group.get('all'),  # --cloudiness in %
+                      rain_group.get('1h'),  # --rain volume in the last hour in mm
+                      rain_group.get('3h'),  # --rain volume in the last 3 hours in mm
+                      snow_group.get('1h'),  # --snow volume in the last hour in mm
+                      snow_group.get('3h'),  # --snow volume in the last 3 hours in mm
+                      json_dict.get('visibility'),  # --visibility in meters
+                      datetime.datetime.fromtimestamp(int(sys_group.get('sunrise').__str__())),
+                      # --sunrise time in UNIX format conversion like data collection time
+                      datetime.datetime.fromtimestamp(int(sys_group.get('sunset').__str__())),
+                      # --sunrise time in UNIX format conversion like data collection time
+                      json_dict.get('timezone') / 3600,  # --shift in seconds from UTC -> converted to hours shift
+                      None)
+
+    def emit_forecast(self, json_dict):
+        list_group = json_dict.get('list') if json_dict.get('list') else {}
+        city_group = json_dict.get('city') if json_dict.get('city') else {}
+        coord_group = city_group.get('coord') if city_group else {}
+
+        for record in list_group:
+            main_group = record.get('main') if record.get('main') else {}
+            weather_group = record.get('weather') if record.get('weather') else {}
+            wind_group = record.get('wind') if record.get('wind') else {}
+            clouds_group = record.get('clouds') if record.get('clouds') else {}
+            rain_group = record.get('rain') if record.get('rain') else {}
+            snow_group = record.get('snow') if record.get('snow') else {}
+            sys_group = record.get('sys') if record.get('sys') else {}
+
+            self.ctx.emit(city_group.get('country'),  # --country code
+                          city_group.get('name'),  # --city name
+                          city_group.get('id'),  # --location id
+                          datetime.datetime.strptime(record.get('dt_txt'), '%Y-%m-%d %H:%M:%S'),  # --forecast timestamp
+                          coord_group.get('lon'),  # --longitude
+                          coord_group.get('lat'),  # --latitude
+                          weather_group[0].get('id'),  # --weather id
+                          weather_group[0].get('main'),  # --weather group
+                          weather_group[0].get('description'),  # --weather condition in the group
+                          weather_group[0].get('icon'),  # --weather icon id
+                          main_group.get('temp'),  # --temperature in degrees centigrade
+                          main_group.get('feels_like'),  # --felt temperature in degrees centigrade
+                          main_group.get('temp_min'),  # --min temperature in degrees centigrade
+                          main_group.get('temp_max'),  # --max temperature in degrees centigradelsius
+                          main_group.get('pressure'),  # --atmospheric pressure in hPa
+                          main_group.get('humidity'),  # --relative humidity in %
+                          main_group.get('sea_level'),  # --atmospheric pressure on the sea level
+                          main_group.get('grnd_level'),  # --atmospheric pressure on the ground level
+                          wind_group.get('speed'),  # --wind speed m/s
+                          wind_group.get('deg'),  # --wind direction
+                          record.get('pop'),  # --Probability of precipitation
+                          clouds_group.get('all'),  # --cloudiness in %
+                          rain_group.get('3h'),  # --rain volume in the last 3 hours in mm
+                          snow_group.get('3h'),  # --snow volume in the last 3 hours in mm
+                          record.get('visibility'),  # --visibility in meters
+                          datetime.datetime.fromtimestamp(int(city_group.get('sunrise').__str__())),
+                          # --sunrise time in UNIX format conversion like data collection time
+                          datetime.datetime.fromtimestamp(int(city_group.get('sunset').__str__())),
+                          # --sunrise time in UNIX format conversion like data collection time
+                          city_group.get('timezone') / 3600,  # --shift in seconds from UTC -> converted to hours shift
+                          None)
+
 
 def run(ctx):
-    logger = PlainTextTcpHandler.initialize_logger(ctx.logger_ip, int(ctx.logger_port), int(ctx.logger_level))
+    api_handler = ApiHandler(ctx)
 
-    logger.info('>>>>API CALL<<<<')
-    logger.info(f'URL PARAMETER SET \n{ctx.api_parameters}\n')
-    try:
-        parameter_expressions = json.loads(ctx.api_parameters)
-    except json.decoder.JSONDecodeError:
-        parameter_expressions = ctx.api_parameters
+    api_handler.logger.info('>>>>API CALL<<<<')
+    api_handler.logger.info(f'URL PARAMETER SET \n{ctx.api_parameters}\n')
 
-    api_calls(parameter_expressions, ctx, logger)
-
-def unpack_const_list_expression(ctx, expression, logger):
-    for literal in expression:
-        request_api_and_emit(ctx, literal, logger)
-
-
-def unpack_parameter_expression_list(parameter_expressions, ctx, logger):
-    for expression in parameter_expressions:
-        # -- Handle Null values sent from the adapter
-        if (type(expression) == list and any(not element for element in expression)) or not expression:
-            continue
-        elif type(expression) == list and (all(element.startswith('id') for element in expression) or all(element.startswith('q') for element in expression)):
-            unpack_const_list_expression(ctx, expression, logger)
-        elif type(expression) == list and any(element.startswith('zip') for element in expression):
-            handle_zip_code_expression(ctx, expression, logger)
-        elif type(expression) == list:
-            handle_geo_lookup_expression(ctx, expression, logger)
-        else:
-            request_api_and_emit(ctx, expression, logger)
+    api_handler.api_calls()
 /
 
 --/
