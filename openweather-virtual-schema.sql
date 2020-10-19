@@ -1,8 +1,3 @@
-----Cleaning up 
-DROP FORCE VIRTUAL SCHEMA openweather CASCADE;
-DROP SCHEMA openweather_vs_scripts CASCADE;
-CREATE SCHEMA openweather_vs_scripts;
-
 --/
 CREATE OR REPLACE PYTHON3 ADAPTER SCRIPT openweather_vs_scripts.openweather_adapter AS 
 import json
@@ -691,36 +686,35 @@ def run(ctx) -> None:
 --/
 CREATE VIRTUAL SCHEMA openweather
 USING openweather_vs_scripts.openweather_adapter
-WITH API_KEY = 'd5ea350b0a22f5ba4e4b8f8570bd7c73'
-     LOG_LISTENER = '192.168.177.83'
-     LOG_LISTENER_PORT = '3333'
-     LOG_LEVEL = 'INFO'
+WITH API_KEY = '...'
+     LOG_LISTENER = '100.100.100.100'   --IP Address
+     LOG_LISTENER_PORT = '1234'         --Port
+     LOG_LEVEL = 'INFO'                 --INFO or WARNING
 /
 
 -- Test Current_Weather
 SELECT * FROM OPENWEATHER.CURRENT_WEATHER
-WHERE  city_name = 'München' OR --  # 1 standard name lookup       ASSERT: Bremen
-        latitude = 41.89 AND longitude = 12.48 OR --  # 2 standard geo lookup        ASSERT: Rome
-        'Los Angeles' = city_name OR --  # 3 reversed name lookup       ASSERT: Los Angeles
-        latitude = 'm' AND longitude = 8.05 OR --  # 4 reversed geo lookup        ASSERT: Error - handled
-        city_id = 'Bremen' OR --  # 5 standard city_id lookup    ASSERT: Error - handled
-        3060972 = city_id OR --  # 6 reversed city_id lookup    ASSERT: Bratislava
-        zip = 96050 AND country_code = 'DE' OR --  # 7 zip code lookup            ASSERT: Bamberg
-        country_code = 'US' AND zip = 10301 OR --  # 8 rever zip code lookup      ASSERT: Staten Island
-        city_id IN (2759794, 3247449, 2957773) OR --  # 9,10,11 in_constlist lookup with city_id     ASSERT: Amsterdam, Aachen, Altenburg
-        city_name IN ('Memphis', 'Zirndorf', 'Kassel'); --  # 12,13,14 ib_ constlist lookup with city_name ASSERT: Minusio, Zirndorf, Kassel'
+WHERE  city_name = 'München' OR
+        latitude = 41.89 AND longitude = 12.48 OR 
+        'Los Angeles' = city_name OR
+        latitude = 'm' AND longitude = 8.05 OR
+        city_id = 'Bremen' OR
+        3060972 = city_id OR
+        zip = 96050 AND country_code = 'DE' OR
+        country_code = 'US' AND zip = 10301 OR
+        city_id IN (2759794, 3247449, 2957773) OR
+        city_name IN ('Memphis', 'Zirndorf', 'Kassel');
 
 ---- Test forecast
 SELECT * FROM OPENWEATHER.FORECAST
-WHERE   city_name = 'Los Angeles' --or --  # 1 standard name lookup       ASSERT: Bremen
---        latitude = 41.89 and longitude = 12.48 or --  # 2 standard geo lookup        ASSERT: Rome
---        'Berlin' = city_name or --  # 3 reversed name lookup       ASSERT: Berlin
---        latitude = 52.27 and longitude = 8.05 or --  # 4 reversed geo lookup        ASSERT: Osnabrück
---        city_id = 2874225 or --  # 5 standard city_id lookup    ASSERT: Mainz
---        3060972 = city_id or --  # 6 reversed city_id lookup    ASSERT: Bratislava
---        zip = 96050 and country_code = 'DE' or --  # 7 zip code lookup            ASSERT: Bamberg
---        country_code = 'US' and zip = 10301 or --  # 8 rever zip code lookup      ASSERT: Staten Island
---        city_id in (
---        2759794, 3247449, 2957773) or --  # 9,10,11 in_constlist lookup with city_id     ASSERT: Amsterdam, Aachen, Altenburg
---        city_name in ('Minusio', 'Zirndorf', 'Kassel'); --  # 12,13,14 ib_ constlist lookup with city_name ASSERT: Minusio, Zirndorf, Kassel'
---                                                        -- Expect 560 rows
+WHERE   city_name = 'Los Angeles' OR
+        latitude = 41.89 AND longitude = 12.48 OR
+        'Berlin' = city_name OR
+        latitude = 52.27 AND longitude = 8.05 OR
+        city_id = 2874225 OR
+        3060972 = city_id OR
+        zip = 96050 AND country_code = 'DE' OR
+        country_code = 'US' AND zip = 10301 OR
+        city_id IN (
+        2759794, 3247449, 2957773) OR
+        city_name IN ('Minusio', 'Zirndorf', 'Kassel');
