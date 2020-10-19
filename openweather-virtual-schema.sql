@@ -15,7 +15,7 @@ class PlainTextTcpHandler(logging.handlers.SocketHandler):
     def makePickle(self, record):
         message = self.formatter.format(record) + "\r\n"
         return message.encode()
-
+    
     @staticmethod
     def initialize_logger(ip: str, port: int, level):
         root_logger = logging.getLogger('')
@@ -48,20 +48,39 @@ class AdapterCallHandler:
 
         self.logger = PlainTextTcpHandler.initialize_logger(self.log_listener, self.log_listener_port, self.log_level)
 
-    def handle_create_virtual_schema(self) -> str:
+    def controll_request_processing(self) -> str:
+        request_type: str = self.request_json_object["type"]
+        if request_type == "createVirtualSchema":
+            return self.__handle_create_virtual_schema()
+        elif request_type == "dropVirtualSchema":
+            return json.dumps({"type": "dropVirtualSchema"})
+        elif request_type == "refresh":
+            return json.dumps({"type": "refresh"})
+        elif request_type == "setProperties":
+            return json.dumps({"type": "setProperties"})
+        elif request_type == "getCapabilities":
+            return json.dumps({"type": "getCapabilities",
+                               "capabilities": ["FILTER_EXPRESSIONS", "LITERAL_STRING", "LITERAL_DOUBLE",
+                                                "LITERAL_EXACTNUMERIC", "FN_PRED_OR", "FN_PRED_AND",
+                                                "FN_PRED_EQUAL", "FN_PRED_IN_CONSTLIST"]})
+        elif request_type == "pushdown":
+            return self.__handle_pushdown()
+        else:
+            raise ValueError('F-VS-OWFS-1 Unsupported adapter callback')
+
+    def __handle_create_virtual_schema(self) -> str:
         result = {"type": "createVirtualSchema",
                   "schemaMetadata": {"tables": []}
                   }
 
-        current_weather: dict = self.get_current_weather_table_json()
-        weather_forecast: dict = self.get_forecast_table_json()
+        current_weather: dict = self.__get_current_weather_table_json()
+        weather_forecast: dict = self.__get_forecast_table_json()
 
         result["schemaMetadata"]["tables"].append(current_weather)
         result["schemaMetadata"]["tables"].append(weather_forecast)
         return json.dumps(result)
 
-    @staticmethod
-    def get_current_weather_table_json() -> dict:
+    def __get_current_weather_table_json(self) -> dict:
         return {"name": "CURRENT_WEATHER",
                 "columns":
                     [
@@ -160,8 +179,7 @@ class AdapterCallHandler:
                          "comment": "Dummy column for filtering API call by ZIP code."}
                     ]}
 
-    @staticmethod
-    def get_forecast_table_json() -> dict:
+    def __get_forecast_table_json(self) -> dict:
         return {"name": "FORECAST",
                 "columns":
                     [
@@ -254,11 +272,11 @@ class AdapterCallHandler:
                          "comment": "Dummy column for filtering API call by ZIP code."}
                     ]}
 
-    def handle_pushdown(self) -> str:
+    def __handle_pushdown(self) -> str:
         self.logger.info('>>>>PUSHDOWN<<<<')
         self.logger.info(f'{json.dumps(self.request_json_object)}\n\n\n')
 
-        sql: str = self.build_sql()
+        sql: str = self.__build_sql()
         result: dict = {
             "type": "pushdown",
             "sql": sql
@@ -268,8 +286,8 @@ class AdapterCallHandler:
         self.logger.info(f'{json.dumps(sql)}\n\n\n>')
         return json.dumps(result)
 
-    def build_sql(self):
-        api_method: str = self.parse_api_method_from_name(self.request_json_object['pushdownRequest']['from']['name'])
+    def __build_sql(self):
+        api_method: str = self.__parse_api_method_from_name(self.request_json_object['pushdownRequest']['from']['name'])
         filters = self.parse_filters(self.request_json_object['pushdownRequest']['filter'])
 
         log_ip: str = self.logger.handlers[0].host
@@ -279,12 +297,11 @@ class AdapterCallHandler:
         self.logger.info(f'\n\n\nAPI FILTERS {filters}')
 
         if api_method == 'weather':
-            return self.generate_current_weather_sql(api_method, json.dumps(filters), log_ip, log_port, log_level)
+            return self.__generate_current_weather_sql(api_method, json.dumps(filters), log_ip, log_port, log_level)
         elif api_method == 'forecast':
-            return self.generate_forecast_sql(api_method, json.dumps(filters), log_ip, log_port, log_level)
+            return self.__generate_forecast_sql(api_method, json.dumps(filters), log_ip, log_port, log_level)
 
-    @staticmethod
-    def parse_api_method_from_name(name) -> str:
+    def __parse_api_method_from_name(self, name) -> str:
         if name == 'CURRENT_WEATHER':
             return 'weather'
         elif name == 'FORECAST':
@@ -309,13 +326,13 @@ class AdapterCallHandler:
         # -- Leaf element has to be of type 'predicate_equal' because this is the only predicate on leaf level that is supported
         else:
             try:
-                return self.handle_predicate_equal(filters)
+                return self.__handle_predicate_equal(filters)
             except (ValueError, KeyError) as err:
                 self.logger.warning(err.message)
                 return None
         return buffer
 
-    def handle_predicate_equal(self, filter_json) -> str:
+    def __handle_predicate_equal(self, filter_json) -> str:
         """Check if expressions are reversed"""
 
         if filter_json.get('right').get('value'):
@@ -362,7 +379,7 @@ class AdapterCallHandler:
             raise KeyError(
                 f'E-VS-OWFS-1 Filtering not supported on column {filter_name} in PREDICATE_EQUAL expression.')
 
-    def generate_current_weather_sql(self, api_method, filters, log_ip, log_port, log_level) -> str:
+    def __generate_current_weather_sql(self, api_method, filters, log_ip, log_port, log_level) -> str:
         sql: str = f'SELECT openweather_vs_scripts.api_handler(\'{self.API_URL}\', \
                                                         \'{api_method}\', \
                                                         \'{filters}\', \
@@ -403,7 +420,7 @@ class AdapterCallHandler:
                                                                 zip VARCHAR(200))'
         return sql
 
-    def generate_forecast_sql(self, api_method, filters, log_ip, log_port, log_level) -> str:
+    def __generate_forecast_sql(self, api_method, filters, log_ip, log_port, log_level) -> str:
         sql: str = f'SELECT openweather_vs_scripts.api_handler(\'{self.API_URL}\', \
                                                         \'{api_method}\', \
                                                         \'{filters}\', \
@@ -445,26 +462,7 @@ class AdapterCallHandler:
 
 def adapter_call(request) -> str:
     call_handler = AdapterCallHandler(request)
-
-    request_type: str = call_handler.request_json_object["type"]
-    if request_type == "createVirtualSchema":
-        return call_handler.handle_create_virtual_schema()
-    elif request_type == "dropVirtualSchema":
-        return json.dumps({"type": "dropVirtualSchema"})
-    elif request_type == "refresh":
-        return json.dumps({"type": "refresh"})
-    elif request_type == "setProperties":
-        return json.dumps({"type": "setProperties"})
-    elif request_type == "getCapabilities":
-        return json.dumps({"type": "getCapabilities",
-                           "capabilities": ["FILTER_EXPRESSIONS", "LITERAL_STRING", "LITERAL_DOUBLE",
-                                            "LITERAL_EXACTNUMERIC", "FN_PRED_OR", "FN_PRED_AND",
-                                            "FN_PRED_EQUAL", "FN_PRED_IN_CONSTLIST"]})
-    elif request_type == "pushdown":
-        return call_handler.handle_pushdown()
-    else:
-        raise ValueError('F-VS-OWFS-1 Unsupported adapter callback')
-
+    return call_handler.controll_request_processing()
 /
 
 --/
@@ -528,61 +526,61 @@ class ApiHandler:
 
     def api_calls(self) -> None:
         if type(self.parameter_expressions) == list:
-            self.unpack_parameter_expression_list()
+            self.__unpack_parameter_expression_list()
         else:
-            self.request_api_and_emit(self.parameter_expressions)
+            self.__request_api_and_emit(self.parameter_expressions)
 
-    def unpack_parameter_expression_list(self) -> None:
+    def __unpack_parameter_expression_list(self) -> None:
         for expression in self.parameter_expressions:
             # -- Handle Null values sent from the adapter
             if (type(expression) == list and any(not element for element in expression)) or not expression:
                 continue
             elif type(expression) == list and (all(element.startswith('id') for element in expression) or all(
                     element.startswith('q') for element in expression)):
-                self.unpack_const_list_expression(expression)
+                self.__unpack_const_list_expression(expression)
             elif type(expression) == list and any(element.startswith('zip') for element in expression):
-                self.handle_zip_code_expression(expression)
+                self.__handle_zip_code_expression(expression)
             elif type(expression) == list:
-                self.handle_geo_lookup_expression(expression)
+                self.__handle_geo_lookup_expression(expression)
             else:
-                self.request_api_and_emit(expression)
+                self.__request_api_and_emit(expression)
 
-    def unpack_const_list_expression(self, expression: list) -> None:
+    def __unpack_const_list_expression(self, expression: list) -> None:
         for literal in expression:
-            self.request_api_and_emit(literal)
+            self.__request_api_and_emit(literal)
 
-    def handle_zip_code_expression(self, expression: list) -> None:
+    def __handle_zip_code_expression(self, expression: list) -> None:
         reg = re.compile('zip')
         zip_index: int = expression.index(list(filter(reg.match, expression))[0])  # --Reverse ZIP, Country Code if reversed
-        self.request_api_and_emit(f'{expression[zip_index]}{expression[abs(zip_index - 1)]}')
+        self.__request_api_and_emit(f'{expression[zip_index]}{expression[abs(zip_index - 1)]}')
 
-    def handle_geo_lookup_expression(self, expression: str) -> None:
+    def __handle_geo_lookup_expression(self, expression: str) -> None:
         parameter: str = '&'.join(expression)
-        self.request_api_and_emit(parameter)
+        self.__request_api_and_emit(parameter)
 
-    def request_api_and_emit(self, param: str) -> None:
+    def __request_api_and_emit(self, param: str) -> None:
         self.logger.info(f'REQUESTNG API WITH: {param}')
 
         try:
-            response: requests.Response = self.api_request(param)
+            response: requests.Response = self.__api_request(param)
             json_response_object: dict = json.loads(response.text)
         except requests.Timeout as e:
             e.message: str = f'E-VW-OWFS-8 API request with parameter <{param}> timed out.'
 
         if response and response.status_code == 200:
             if self.api_method == 'weather':
-                self.emit_current_weather(json_response_object)
+                self.__emit_current_weather(json_response_object)
             elif self.api_method == 'forecast':
-                self.emit_forecast(json_response_object)
+                self.__emit_forecast(json_response_object)
         else:
             self.logger.error('')
 
-    def api_request(self, param: str) -> requests.Response:
+    def __api_request(self, param: str) -> requests.Response:
         request: str = f"{self.api_host}{self.api_method}?{param}&units=metric&appid={self.api_key}"
         self.logger.info(f'REQUEST STRING: {request}\n\n\n')
         return requests.get(request)
 
-    def emit_current_weather(self, json_dict: dict) -> None:
+    def __emit_current_weather(self, json_dict: dict) -> None:
         coord_group = json_dict.get('coord') if json_dict.get('coord') else {}
         main_group = json_dict.get('main') if json_dict.get('main') else {}
         weather_group = json_dict.get('weather') if json_dict.get('weather') else {}
@@ -627,7 +625,7 @@ class ApiHandler:
                       json_dict.get('timezone') / 3600,  # --shift in seconds from UTC -> converted to hours shift
                       None)
 
-    def emit_forecast(self, json_dict: dict) -> None:
+    def __emit_forecast(self, json_dict: dict) -> None:
         list_group = json_dict.get('list') if json_dict.get('list') else {}
         city_group = json_dict.get('city') if json_dict.get('city') else {}
         coord_group = city_group.get('coord') if city_group else {}
