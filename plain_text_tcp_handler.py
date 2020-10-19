@@ -1,3 +1,6 @@
+import logging.handlers
+
+
 class PlainTextTcpHandler(logging.handlers.SocketHandler):
     """ Sends plain text log message over TCP channel """
 
