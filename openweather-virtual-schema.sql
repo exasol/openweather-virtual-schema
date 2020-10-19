@@ -15,7 +15,7 @@ class PlainTextTcpHandler(logging.handlers.SocketHandler):
     def makePickle(self, record):
         message = self.formatter.format(record) + "\r\n"
         return message.encode()
-    
+
     @staticmethod
     def initialize_logger(ip: str, port: int, level):
         root_logger = logging.getLogger('')
@@ -49,6 +49,8 @@ class AdapterCallHandler:
         self.logger = PlainTextTcpHandler.initialize_logger(self.log_listener, self.log_listener_port, self.log_level)
 
     def controll_request_processing(self) -> str:
+        """Takes the parsed JSON request and decides based on the request type how to handle the request.
+        :returns a JSON string that will be interpreted by the database."""
         request_type: str = self.request_json_object["type"]
         if request_type == "createVirtualSchema":
             return self.__handle_create_virtual_schema()
@@ -461,6 +463,7 @@ class AdapterCallHandler:
 
 
 def adapter_call(request) -> str:
+    """Public entry point to any adapter script on Exasol"""
     call_handler = AdapterCallHandler(request)
     return call_handler.controll_request_processing()
 /
@@ -525,6 +528,9 @@ class ApiHandler:
         self.logger = PlainTextTcpHandler.initialize_logger(ctx.logger_ip, int(ctx.logger_port), int(ctx.logger_level))
 
     def api_calls(self) -> None:
+        """Takes the API parameter expression(s) the UDF was called with and unpacks them if they are a list. After
+        unpacking the values the class proceeds with calling the API with the respective parameters and emitting the
+        results."""
         if type(self.parameter_expressions) == list:
             self.__unpack_parameter_expression_list()
         else:
@@ -673,6 +679,7 @@ class ApiHandler:
 
 
 def run(ctx) -> None:
+    """Public run method as entry point to any Python UDF on Exasol"""
     api_handler = ApiHandler(ctx)
 
     api_handler.logger.info('>>>>API CALL<<<<')
