@@ -27,3 +27,12 @@ After the Virtual Schema is creates succesfully you can run SQL queries from you
 ## Behind the scenes
 
 A more detailed explanation on how this Virtual Schema works can be found in the Exasol Community. Have a look [here](https://community.exasol.com/t5/tkb/articleeditorpage/tkb-id/tkb/message-uid/2298)
+
+## Deleting the schema
+
+In order to delete the Virtual Schema and it's schema  run:
+
+´´´sql
+DROP FORCE VIRTUAL SCHEMA openweather CASCADE;
+DROP SCHEMA openweather_vs_scripts CASCADE;
+´´´
