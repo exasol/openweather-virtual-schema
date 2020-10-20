@@ -7,8 +7,8 @@ from pathlib import Path
 
 def download_python_files():
     """Downloads the adapter script and logger code from github"""
-    python_code_github_links = ["https://raw.githubusercontent.com/exasol/openweather-virtual-schema/develop/openweather_adapter.py?token=ANQLVQCHTTQJNOXCU5ZDQ3K7S2HJY",
-                                "https://raw.githubusercontent.com/exasol/openweather-virtual-schema/develop/plain_text_tcp_handler.py?token=ANQLVQH7DOJOVOUO45OP7UC7S2ENU"]
+    python_code_github_links = ["https://raw.githubusercontent.com/exasol/openweather-virtual-schema/develop/openweather_adapter.py",
+                                "https://raw.githubusercontent.com/exasol/openweather-virtual-schema/develop/plain_text_tcp_handler.py"]
 
     file_names = ['openweather_adapter.py', 'plain_text_tcp_handler.py']
     for ind, link in enumerate(python_code_github_links):
@@ -47,8 +47,8 @@ from pathlib import Path
 
 def download_python_files():
     """Downloads the UDF and TCP logger code from github"""
-    python_code_github_links = ["https://raw.githubusercontent.com/exasol/openweather-virtual-schema/develop/api_handler.py?token=ANQLVQHV3KXAOOMCCLM5CH27S2FZG",
-                                "https://raw.githubusercontent.com/exasol/openweather-virtual-schema/develop/plain_text_tcp_handler.py?token=ANQLVQH7DOJOVOUO45OP7UC7S2ENU"]
+    python_code_github_links = ["https://raw.githubusercontent.com/exasol/openweather-virtual-schema/develop/api_handler.py",
+                                "https://raw.githubusercontent.com/exasol/openweather-virtual-schema/develop/plain_text_tcp_handler.py"]
 
     file_names = ['api_handler.py', 'plain_text_tcp_handler.py']
     for ind, link in enumerate(python_code_github_links):
@@ -84,7 +84,7 @@ WITH API_KEY = '...'
 
 -- Test Current_Weather
 SELECT * FROM OPENWEATHER.CURRENT_WEATHER
-WHERE  city_name = 'München' OR
+WHERE  city_name = 'MÃ¼nchen' OR
         latitude = 41.89 AND longitude = 12.48 OR 
         'Los Angeles' = city_name OR
         latitude = 'm' AND longitude = 8.05 OR
