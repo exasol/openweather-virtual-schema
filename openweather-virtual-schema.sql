@@ -7,8 +7,8 @@ from pathlib import Path
 
 def download_python_files():
     """Downloads the adapter script and logger code from github"""
-    python_code_github_links = ["https://raw.githubusercontent.com/exasol/openweather-virtual-schema/develop/openweather_adapter.py",
-                                "https://raw.githubusercontent.com/exasol/openweather-virtual-schema/develop/plain_text_tcp_handler.py"]
+    python_code_github_links = ["https://raw.githubusercontent.com/exasol/openweather-virtual-schema/master/openweather_adapter.py",
+                                "https://raw.githubusercontent.com/exasol/openweather-virtual-schema/master/plain_text_tcp_handler.py"]
 
     file_names = ['openweather_adapter.py', 'plain_text_tcp_handler.py']
     for ind, link in enumerate(python_code_github_links):
@@ -47,8 +47,8 @@ from pathlib import Path
 
 def download_python_files():
     """Downloads the UDF and TCP logger code from github"""
-    python_code_github_links = ["https://raw.githubusercontent.com/exasol/openweather-virtual-schema/develop/api_handler.py",
-                                "https://raw.githubusercontent.com/exasol/openweather-virtual-schema/develop/plain_text_tcp_handler.py"]
+    python_code_github_links = ["https://raw.githubusercontent.com/exasol/openweather-virtual-schema/master/api_handler.py",
+                                "https://raw.githubusercontent.com/exasol/openweather-virtual-schema/master/plain_text_tcp_handler.py"]
 
     file_names = ['api_handler.py', 'plain_text_tcp_handler.py']
     for ind, link in enumerate(python_code_github_links):
