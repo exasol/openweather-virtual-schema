@@ -84,7 +84,7 @@ WITH API_KEY = '...'
 
 -- Test Current_Weather
 SELECT * FROM OPENWEATHER.CURRENT_WEATHER
-WHERE  city_name = 'München' OR
+WHERE  city_name = 'Stuttgart' OR
         latitude = 41.89 AND longitude = 12.48 OR 
         'Los Angeles' = city_name OR
         latitude = 'm' AND longitude = 8.05 OR
