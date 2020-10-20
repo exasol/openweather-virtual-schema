@@ -8,7 +8,7 @@ This project shows that even REST APIs can be connected to Exasol using Virtual 
 ## Getting Started
 In order to use the virtual schema you need an account with [Openweather](https://openweathermap.org/). A free account works for this example. With an account you will get an API key which you need to access the API. The key looks like this: `d5ea350b1a22f5ba4e4b8a8570bd5c73`.
 
-After you have created your account and accquired your key you need to create the Virtual Schema. To do so copy the contents of [openweather-virtual-schema.sql](https://github.com/exasol/openweather-virtual-schema/blob/develop/openweather-virtual-schema.sql) into your SQL editor and run the first two `CREATE OR REPLACE` statements
+After you have created your account and accquired your key you need to create the Virtual Schema. To do so copy the contents of [openweather-virtual-schema.sql](https://github.com/exasol/openweather-virtual-schema/blob/master/openweather-virtual-schema.sql) into your SQL editor and run the first two `CREATE OR REPLACE` statements
 
 After the scripts are created you need to fill in the placeholders for the Virtual Schema creation.
 
@@ -22,7 +22,7 @@ WITH API_KEY = 'your key'
 /
 ``` 
 
-After the Virtual Schema is creates succesfully you can run SQL queries from your database against the API. Please refer to the example SQL statements at the bottom of [openweather-virtual-schema.sql](https://github.com/exasol/openweather-virtual-schema/blob/develop/openweather-virtual-schema.sql).
+After the Virtual Schema is creates succesfully you can run SQL queries from your database against the API. Please refer to the example SQL statements at the bottom of [openweather-virtual-schema.sql](https://github.com/exasol/openweather-virtual-schema/blob/master/openweather-virtual-schema.sql).
 
 ## Behind the scenes
 
