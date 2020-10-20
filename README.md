@@ -26,7 +26,7 @@ After the Virtual Schema is creates succesfully you can run SQL queries from you
 
 ## Behind the scenes
 
-A more detailed explanation on how this Virtual Schema works can be found in the Exasol Community. Have a look [here](https://community.exasol.com/t5/tkb/articleeditorpage/tkb-id/tkb/message-uid/2298)
+A more detailed explanation on how this Virtual Schema works can be found in the Exasol Community. Have a look [here](https://community.exasol.com/t5/database-features/using-virtual-schema-on-a-rest-api/ta-p/2298)
 
 ## Deleting the schema
 
