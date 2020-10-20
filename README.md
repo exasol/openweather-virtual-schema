@@ -32,7 +32,7 @@ A more detailed explanation on how this Virtual Schema works can be found in the
 
 In order to delete the Virtual Schema and it's schema  run:
 
-´´´sql
+```sql
 DROP FORCE VIRTUAL SCHEMA openweather CASCADE;
 DROP SCHEMA openweather_vs_scripts CASCADE;
-´´´
+```
