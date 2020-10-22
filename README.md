@@ -28,6 +28,47 @@ After the Virtual Schema is creates succesfully you can run SQL queries from you
 
 A more detailed explanation on how this Virtual Schema works can be found in the Exasol Community. Have a look [here](https://community.exasol.com/t5/database-features/using-virtual-schema-on-a-rest-api/ta-p/2298)
 
+## Suported Features
+All expressions work in both directions:
+`[city_name = 'Stuttgart'] == ['Stuttgart' = city_name]`
+
+### Filter by city
+```sql
+SELECT * FROM OPENWEATHER.CURRENT_WEATHER
+WHERE  city_name = 'Stuttgart';
+```
+
+### Filter by city-list
+```sql
+SELECT * FROM OPENWEATHER.CURRENT_WEATHER
+WHERE  city_name IN ('Stuttgart', 'New York', 'Memphis');
+```
+
+### Filter by latitude and longitude
+```sql
+SELECT * FROM OPENWEATHER.CURRENT_WEATHER
+WHERE  latitude = 41.89 AND longitude = 12.48;
+```
+
+### Filter by cityID
+```sql
+SELECT * FROM OPENWEATHER.CURRENT_WEATHER
+WHERE city_id = 3060972
+```
+
+
+### Filter by cityID-list
+```sql
+SELECT * FROM OPENWEATHER.CURRENT_WEATHER
+WHERE  city_name IN (2759794, 3247449, 2957773);
+```
+
+### Filter by zip code
+```sql
+SELECT * FROM OPENWEATHER.CURRENT_WEATHER
+WHERE zip = 96050 AND country_code = 'DE'
+```
+
 ## Deleting the schema
 
 In order to delete the Virtual Schema and it's schema  run:
