@@ -12,6 +12,9 @@ After you have created your account and accquired your key you need to create th
 
 After the scripts are created you need to fill in the placeholders for the Virtual Schema creation.
 
+###DISCLAIMER
+In a production environment you should never put your `API_KEY` in plain text here. Instead create a [named connection](https://docs.exasol.com/7.0/sql/create_connection.htm). Otherwise the `API_KEY` will show up in your database logging.
+
 ```sql
 CREATE VIRTUAL SCHEMA <NAME>
 USING openweather_vs_scripts.openweather_adapter
