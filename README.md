@@ -1,5 +1,7 @@
 # Openweather Virtual Schema
 
+##### Please note that this is an open source project which is not officially supported by EXASOL. We will try to help you as much as possible, but can't guarantee anything since this is not an official EXASOL product.
+
 ## Overview
 Exasol Virtual Schemas allow you to acces arbitrary data sources from inside your Exasol database. 
 This functionality is mainly used to integrate relational database management systems but is not limited to it.
